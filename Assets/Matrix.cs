@@ -42,12 +42,27 @@ public class Matrix<T> : IEnumerable<T>
 
 	public void SetRangeTo(int x0, int y0, int x1, int y1, T item) {
         //IMPLEMENTAR: iguala todo el rango pasado por parámetro a item
+        for (int i = x0; i < x1; i++)
+        {
+            for (int z = y0; z < y1; z++) {
+
+                _data[i * z + z] = item;
+            }
+        }
     }
 
     //Todos los parametros son INCLUYENTES
     public List<T> GetRange(int x0, int y0, int x1, int y1) {
         List<T> l = new List<T>();
         //IMPLEMENTAR
+        for (int i = x0; i < x1; i++)
+        {
+            for (int z = y0; z < y1; z++)
+            {
+
+                l.Add(_data[i * z + z]);
+            }
+        }
         return l;
 	}
 
