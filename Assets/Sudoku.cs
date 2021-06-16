@@ -2,292 +2,391 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine.UI;
+using Random = UnityEngine.Random;
 
 
-public class Sudoku : MonoBehaviour {
-	public Cell prefabCell;
-	public Canvas canvas;
-	public Text feedback;
-	public float stepDuration = 0.05f;
-	[Range(1, 82)]public int difficulty = 40;
+public class Sudoku : MonoBehaviour
+{
+    /* REFERENCES & SETTING */
+    public Cell prefabCell;
+    public Canvas canvas;
+    public Text feedback;                           // Comunicacion con el usuario
+    public float stepDuration = 0.05f;
+    [Range(1, 82)] public int difficulty = 40;
 
-	Matrix<Cell> _board;
-	Matrix<int> _createdMatrix;
-    List<int> posibles = new List<int>();
-	int _smallSide;
-	int _bigSide;
-    string memory = "";
-    string canSolve = "";
-    bool canPlayMusic = false;
-    List<int> nums = new List<int>();
+    /* PRIVATE VARIABLES */
+    private Matrix<Cell> _board;                    // Matriz de celdas a usar como tablero
+    private Matrix<int> _mtx;                       // Matriz de numeros del board
+    private int _boardSide;                         // Guarda la cantidad de casillas por lado del board
+    private int _side;                              // Guarda 3 (tamaño del recuadro a controlar)
+    private int _quad;                              // Guarda 3 (cantidad de recuadros a controlar)
+    private string _memory = "";                    // Guarda el el debugueo de la memoria
 
+    private List<int> _nums = new List<int>();      // Guardar los numeros posibles a usar
+    //string canSolve = "";
+    //List<int> nums = new List<int>();
 
-
-    float r = 1.0594f;
-    float frequency = 440;
-    float gain = 0.5f;
-    float increment;
-    float phase;
-    float samplingF = 48000;
-
-
-    void Start()
+    private void Start()
     {
-        long mem = System.GC.GetTotalMemory(true);
-        feedback.text = string.Format("MEM: {0:f2}MB", mem / (1024f * 1024f));
-        memory = feedback.text;
-        _smallSide = 3;
-        _bigSide = _smallSide * 3;
-        frequency = frequency * Mathf.Pow(r, 2);
+        DebugMemory();
+
+        _side = 3;// VER
+        _quad = 3;// VER
+        _boardSide = _side * _quad;// VER  
+
         CreateEmptyBoard();
         ClearBoard();
     }
 
-    void ClearBoard() {
-		_createdMatrix = new Matrix<int>(_bigSide, _bigSide);
-		foreach(var cell in _board) {
-			cell.number = 0;
-			cell.locked = cell.invalid = false;
-		}
-	}
-
-	void CreateEmptyBoard() {
-		float spacing = 68f;
-		float startX = -spacing * 4f;
-		float startY = spacing * 4f;
-
-		_board = new Matrix<Cell>(_bigSide, _bigSide);
-		for(int x = 0; x<_board.Width; x++) {
-			for(int y = 0; y<_board.Height; y++) {
-                var cell = _board[x, y] = Instantiate(prefabCell);
-				cell.transform.SetParent(canvas.transform, false);
-				cell.transform.localPosition = new Vector3(startX + x * spacing, startY - y * spacing, 0);
-			}
-		}
-	}
-	
-
-
-	//IMPLEMENTAR
-	int watchdog = 0;
-	bool RecuSolve(Matrix<int> matrixParent, int x, int y, int protectMaxDepth, List<Matrix<int>> solution)
+    private void DebugMemory() // DONE
     {
-		return false;
-	}
+        long mem = System.GC.GetTotalMemory(true);
+        _memory = string.Format("MEM: {0:f2}MB", mem / (1024f * 1024f));
 
-
-    void OnAudioFilterRead(float[] array, int channels)
+        feedback.text = _memory;
+    }
+    private void CreateEmptyBoard() // DONE
     {
-        if(canPlayMusic)
+        float spacing = 68f;
+        float startX = -spacing * 4f;
+        float startY = spacing * 4f;
+
+        _board = new Matrix<Cell>(_boardSide, _boardSide);
+
+        for (int x = 0; x < _board.Width; x++)
         {
-            increment = frequency * Mathf.PI / samplingF;
-            for (int i = 0; i < array.Length; i++)
+            for (int y = 0; y < _board.Height; y++)
             {
-                phase = phase + increment;
-                array[i] = (float)(gain * Mathf.Sin((float)phase));
+                var cell = _board[x, y] = Instantiate(prefabCell, canvas.transform, false);
+                cell.transform.localPosition = new Vector3(startX + x * spacing, startY - y * spacing, 0);
             }
         }
-        
     }
-    void changeFreq(int num)
+    private void ClearBoard() // DONE
     {
-        frequency = 440 + num * 80;
+        _mtx = new Matrix<int>(_boardSide, _boardSide);
+
+        foreach (var cell in _board)
+        {
+            cell.number = 0;
+            cell.locked = cell.invalid = false;
+        }
     }
 
-	//IMPLEMENTAR - punto 3
-	IEnumerator ShowSequence(List<Matrix<int>> seq)
+    private void Update()
     {
-        yield return new WaitForSeconds(0);
-    }
-
-	void Update () {
-		if(Input.GetKeyDown(KeyCode.R) || Input.GetMouseButtonDown(1))
+        if (Input.GetKeyDown(KeyCode.R) || Input.GetMouseButtonDown(1))
             SolvedSudoku();
-        else if(Input.GetKeyDown(KeyCode.C) || Input.GetMouseButtonDown(0)) 
-            CreateSudoku();	
-	}
-
-	//modificar lo necesario para que funcione.
-    void SolvedSudoku()
+        else if (Input.GetKeyDown(KeyCode.C) || Input.GetMouseButtonDown(0))
+            LoadFromTest(10);
+            //CreateSudoku();
+    }
+    private void SolvedSudoku() // P: Modificar lo necesario para que funcione.
     {
         StopAllCoroutines();
-        nums = new List<int>();
-        var solution = new List<Matrix<int>>();
-        watchdog = 100000;
-        var result =false;//????
+
+
+
+
+        //nums = new List<int>();
+        //var solution = new List<Matrix<int>>();
+        // watchdog = 100000;
+        // var result = false;
+        //????
+
+
         long mem = System.GC.GetTotalMemory(true);
-        memory = string.Format("MEM: {0:f2}MB", mem / (1024f * 1024f));
-        canSolve = result ? " VALID" : " INVALID";
-		//???
+        _memory = string.Format("MEM: {0:f2}MB", mem / (1024f * 1024f));
+        //canSolve = result ? " VALID" : " INVALID";
+        //???
+    }
+    private void CreateSudoku()
+    {
+        StopAllCoroutines();
+
+        GenerateFromEmpty();
+
+        //nums = new List<int>();
+        //List<Matrix<int>> l = new List<Matrix<int>>();
+        //watchdog = 100000;
+
+
+        //GenerateValidLine(_boardContent, 0, 0);
+
+        var result = false;
+
+        //_boardContent = l[0].Clone(); // MMM TA RARO ESO
+
+        //LockRandomCells();
+        //ClearUnlocked(_mtx);
+
+
+        DebugMemory(); // VER el feedback
+
+        //canSolve = result ? " VALID" : " INVALID";
+
+        //feedback.text = "Pasos: " + l.Count + "/" + l.Count + " - " + _memory + " - " + canSolve;
     }
 
-    void CreateSudoku()
+    private void GenerateFromEmpty() // TEST
     {
-        StopAllCoroutines();
-        nums = new List<int>();
-        canPlayMusic = false;
         ClearBoard();
-        List<Matrix<int>> l = new List<Matrix<int>>();
-        watchdog = 100000;
-        GenerateValidLine(_createdMatrix, 9, 9);
-        l.Add(_createdMatrix);
-       // GenerateValidLine(_createdMatrix, 0, 0);
-        var result =false;
-        _createdMatrix = l[0].Clone();
-        LockRandomCells();
-        ClearUnlocked(_createdMatrix);
-        TranslateAllValues(_createdMatrix);
-        long mem = System.GC.GetTotalMemory(true);
-        memory = string.Format("MEM: {0:f2}MB", mem / (1024f * 1024f));
-        canSolve = result ? " VALID" : " INVALID";
-        feedback.text = "Pasos: " + l.Count + "/" + l.Count + " - " + memory + " - " + canSolve;
-    }
-    void GenerateValidLine(Matrix<int> mtx, int x, int y)
-    {
 
-        int[] aux2 = new int[y];
-        for (int z = 0; z < aux2.Length; z++)
+        for (int i = 1; i <= _quad; i++)
         {
-            int[] aux = new int[x];
+            PlaceNumber(i);
+        }
 
-            for (int i = 0; i < 9; i++)
+        //RefillNums();
+
+        //// Genero primera linea
+        //for (int i = 0; i < _boardSide; i++)
+        //{
+        //    _mtx[i, 0] = _nums[i];
+        //    Debug.Log("Cargado en " + i + ";0 = " + _nums[i]);
+        //}
+
+        //// Genero el resto de las lineas de abajo hacia arriba
+        //for (int j = 1; j < _boardSide; j++)
+        //{
+        //    RefillNums();
+        //    for (int i = 0; i < _boardSide; i++)
+        //    {
+        //        if (!PlaceFromNums(i, j))
+        //        {
+        //            Debug.Log("NO PUDE PONER VALOR EN " + i + ";" + j);
+        //            break;
+        //        }
+        //    }
+        //}
+
+        LoadBoardFromMtx();
+    }
+    private bool PlaceNumber(int value)
+    {
+        List<int> v = FillRamdoms();
+        List<int> w = new List<int>();
+
+        for (int i = 0; i < _boardSide; i++)
+        {
+            for (int j = 0; j < v.Count; j++)
             {
-                aux[i] = i + 1;
+                var q = GetQuad(i, v[j]);
+                if (w.Contains(q)) continue;
 
-            }
-            int numAux = 0;
+                if (_mtx[i, v[j]] == 0) _mtx[i, v[j]] = value;
+                else continue;
 
-            for (int j = 0; j < aux.Length; j++)
-            {
-                int r = 1 + Random.Range(j, aux.Length);
-                numAux = aux[r - 1];
-                aux[r - 1] = aux[j];
-                aux[j] = numAux;
-
-                
-            }
-            for (int k = 0; k < aux.Length; k++)
-            {
-                mtx[z, k] = aux[k];
+                v.RemoveAt(j);
+                w.Add(q);
+                break;
             }
         }
-	}
+
+        return v.Count == 0;
+    }
+    private List<int> FillRamdoms() // TEST
+    {
+        List<int> bag = new List<int>();
+
+        for (int i = 0; i < _boardSide; i++)
+            bag.Insert(Random.Range(0, i), i);
+
+        return bag;
+    }
+    private int GetQuad(int x, int y) //TEST
+    {
+        int qX = (int)(x / _side);
+        int qY = (int)(y / _side);
+
+        return qX + qY * _quad;
+    }
 
 
-	void ClearUnlocked(Matrix<int> mtx)
-	{
-		for (int i = 0; i < _board.Height; i++) {
-			for (int j = 0; j < _board.Width; j++) {
-				if (!_board [j, i].locked)
-					mtx[j,i] = Cell.EMPTY;
-			}
-		}
-	}
+    private void RefillNums() // TEST
+    {
+        _nums.Clear();
 
-	void LockRandomCells()
-	{
-		List<Vector2> posibles = new List<Vector2> ();
-		for (int i = 0; i < _board.Height; i++) {
-			for (int j = 0; j < _board.Width; j++) {
-				if (!_board [j, i].locked)
-					posibles.Add (new Vector2(j,i));
-			}
-		}
-		for (int k = 0; k < 82-difficulty; k++) {
-			int r = Random.Range (0, posibles.Count);
-			_board [(int)posibles [r].x, (int)posibles [r].y].locked = true;
-			posibles.RemoveAt (r);
-		}
-	}
+        for (int i = 1; i <= _boardSide; i++)
+            _nums.Insert(Random.Range(0, i), i);
+    }
+    private bool PlaceFromNums(int x, int y) // TEST
+    {
+        foreach (var value in _nums)
+        {
+            if (CheckDown(value, x, y))
+            {
+                _mtx[x, y] = value;
+                Debug.Log("Cargado en " + x + ";" + y + " = " + value);
+                _nums.Remove(value);
+                return true;
+            }
+        }
 
-    void TranslateAllValues(Matrix<int> matrix)
+        return false;
+    }
+    private bool CheckDown(int value, int x, int y) // TEST
+    {
+        // REVISO LA COLUMNA
+        for (int i = 0; i < y; i++)
+        {
+            if (_mtx[x, i] == value)
+            {
+                Debug.Log("CD: " + x + ";" + y + " = " + value + " : Coincidencia en " + x + ";" + i);
+                return false;          // Si uno es igual corto la validaciones
+            }
+        }
+
+        // REVISO LA FILA
+        for (int i = 0; i < _boardSide; i++)
+        {
+            if (i == x) continue;                           // Si soy yo me salto
+            if (_mtx[i, y] == value)
+            {
+                Debug.Log("CD: " + x + ";" + y + " = " + value + " : Coincidencia en " + i + ";" + y);
+                return false;          // Si uno es igual corto la validaciones
+            }
+        }
+
+        // REVISO EL CUADRANTE
+        int auxX = (int)(x / _side);                        // Mi X inicio de cuadrante
+        int auxY = (int)(y / _side);                        // Mi Y inicio de cuadrante
+
+        for (int j = 0; j < _side; j++)
+        {
+            var v = j + auxY * _side;
+            if (v == y) return true;             // Si es mi fila corto
+            for (int i = 0; i < _side; i++)
+            {
+                var u = i + auxX * _side;
+                if (u == x) continue;                    // Si es mi columna me salto
+                if (_mtx[u, v] == value)
+                {
+                    Debug.Log("CD: " + x + ";" + y + " = " + value + " : Coincidencia en " + u + ";" + v);
+                    return false;      // Si uno es igual corto la validaciones
+                }
+            }
+        }
+
+        return true;
+    }
+    private void LoadBoardFromMtx(bool locked = false) // TEST
+    {
+        for (int y = 0; y < _boardSide; y++)
+        {
+            for (int x = 0; x < _boardSide; x++)
+            {
+                _board[x, y].number = _mtx[x, y];
+                _board[x, y].locked = (locked && _mtx[x, y] != 0);
+            }
+        }
+    }
+
+    private void LockRandomCells() // DONE
+    {
+        List<Vector2> posibles = new List<Vector2>();
+
+        // Carga las cordenadas de las celdas debloqueadas
+        for (int y = 0; y < _board.Height; y++)
+        {
+            for (int x = 0; x < _board.Width; x++)
+            {
+                if (!_board[x, y].locked)
+                    posibles.Add(new Vector2(x, y));
+            }
+        }
+
+        // Bloquea celdas aleatoriamente
+        for (int i = 0; i < 82 - difficulty; i++)
+        {
+            int rdm = Random.Range(0, posibles.Count);
+            _board[(int)posibles[rdm].x, (int)posibles[rdm].y].locked = true;
+            posibles.RemoveAt(rdm);
+        }
+    }
+    private void ClearUnlocked(Matrix<int> content) // DONE
     {
         for (int y = 0; y < _board.Height; y++)
         {
             for (int x = 0; x < _board.Width; x++)
             {
-                _board[x, y].number = matrix[x, y];
+                if (!_board[x, y].locked)
+                    content[x, y] = Cell.EMPTY;
             }
         }
     }
 
-    void TranslateSpecific(int value, int x, int y)
+    private bool CanPlaceValue(int value, int x, int y) // TEST
+    {
+        // VALIDACIONES
+        if (value == 0) return true;                        // Si es 0 no chequeo y doy OK
+
+        // REVISO LA FILA
+        for (int i = 0; i < _mtx.Width; i++)
+        {
+            if (i == x) continue;                           // Si soy yo me salto
+            if (_mtx[i, y] == value) return false;          // Si uno es igual corto la validaciones
+        }
+
+        // REVISO LA COLUMNA
+        for (int i = 0; i < _mtx.Height; i++)
+        {
+            if (i == y) continue;                           // Si soy yo me salto
+            if (_mtx[x, i] == value) return false;          // Si uno es igual corto la validaciones
+        }
+
+        // REVISO EL CUADRANTE
+        int auxX = (int)(x / _side);                        // Mi X inicio de cuadrante
+        int auxY = (int)(y / _side);                        // Mi Y inicio de cuadrante
+        for (int i = 0; i < _side; i++)
+        {
+            var u = i + auxX * _side;
+            if (u == x) continue;                           // Si es mi columna me salto
+            for (int j = 0; j < _side; j++)
+            {
+                var v = j + auxY * _side;
+                if (v == y) continue;                       // Si es mi fila me salto
+                if (_mtx[u, v] == value) return false;      // Si uno es igual corto la validaciones
+            }
+        }
+
+        return true;
+    }
+
+
+
+
+    //IMPLEMENTAR
+    int watchdog = 0;
+    bool RecuSolve(Matrix<int> matrixParent, int x, int y, int protectMaxDepth, List<Matrix<int>> solution)
+    {
+        return false;
+    }
+
+    //IMPLEMENTAR - punto 3
+    IEnumerator ShowSequence(List<Matrix<int>> seq)
+    {
+        yield return new WaitForSeconds(0);
+    }
+
+    private void TranslateSpecific(int value, int x, int y)
     {
         _board[x, y].number = value;
     }
-
-    void TranslateRange(int x0, int y0, int xf, int yf)
+    private void TranslateRange(int x0, int y0, int xf, int yf)
     {
         for (int x = x0; x < xf; x++)
         {
             for (int y = y0; y < yf; y++)
             {
-                _board[x, y].number = _createdMatrix[x, y];
+                _board[x, y].number = _mtx[x, y];
             }
         }
     }
-    void CreateNew()
+
+    void LoadFromTest(int i)
     {
-        _createdMatrix = new Matrix<int>(Tests.validBoards[1]);
-        TranslateAllValues(_createdMatrix);
-    }
-
-    bool CanPlaceValue(Matrix<int> mtx, int value, int x, int y)
-    {
-        List<int> fila = new List<int>();
-        List<int> columna = new List<int>();
-        List<int> area = new List<int>();
-        List<int> total = new List<int>();
-
-        Vector2 cuadrante = Vector2.zero;
-
-        for (int i = 0; i < mtx.Height; i++)
-        {
-            for (int j = 0; j < mtx.Width; j++)
-            {
-                if (i != y && j == x) columna.Add(mtx[j, i]);
-                else if(i == y && j != x) fila.Add(mtx[j,i]);
-            }
-        }
-
-
-
-        cuadrante.x = (int)(x / 3);
-
-        if (x < 3)
-            cuadrante.x = 0;     
-        else if (x < 6)
-            cuadrante.x = 3;
-        else
-            cuadrante.x = 6;
-
-        if (y < 3)
-            cuadrante.y = 0;
-        else if (y < 6)
-            cuadrante.y = 3;
-        else
-            cuadrante.y = 6;
-         
-        area = mtx.GetRange((int)cuadrante.x, (int)cuadrante.y, (int)cuadrante.x + 3, (int)cuadrante.y + 3);
-        total.AddRange(fila);
-        total.AddRange(columna);
-        total.AddRange(area);
-        total = FilterZeros(total);
-
-        if (total.Contains(value))
-            return false;
-        else
-            return true;
-    }
-
-
-    List<int> FilterZeros(List<int> list)
-    {
-        List<int> aux = new List<int>();
-        for (int i = 0; i < list.Count; i++)
-        {
-            if (list[i] != 0) aux.Add(list[i]);
-        }
-        return aux;
+        _mtx = new Matrix<int>(Tests.validBoards[i]);
+        LoadBoardFromMtx(true);
     }
 }

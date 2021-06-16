@@ -1,94 +1,88 @@
-﻿using UnityEngine;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
-
-
 
 public class Matrix<T> : IEnumerable<T>
 {
-    //IMPLEMENTAR: ESTRUCTURA INTERNA- DONDE GUARDO LOS DATOS?
-
     private T[] _data;
-    public Matrix(int width, int height)
+
+    public Matrix(int width, int height) // DONE: Contructor
     {
         Width = width;
         Height = height;
         Capacity = width * height;
         _data = new T[Capacity];
-        //IMPLEMENTAR: constructor
     }
-
-	public Matrix(T[,] copyFrom)
+    public Matrix(T[,] copyFrom) // DONE: Crea una version de Matrix a partir de una matriz básica de C#
     {
-        Matrix<T> aux = new Matrix<T>(copyFrom.GetLength(0), copyFrom.GetLength(1));
-        for (int i = 0; i < copyFrom.GetLength(1); i++)
-        {
-            for (int z = 0; z < copyFrom.GetLength(0); z++)
-            {
-                _data[i * z + z] = copyFrom[z, i];
-            }
+        Width = copyFrom.GetLength(0);
+        Height = copyFrom.GetLength(1);
+        Capacity = Width * Height;
+        _data = new T[Capacity];
 
+        for (int j = 0; j < Height; j++)
+        {
+            for (int i = 0; i < Width; i++)
+            {
+                this[i, j] = copyFrom[i, j];
+            }
         }
-        //IMPLEMENTAR: crea una version de Matrix a partir de una matriz básica de C#
     }
 
-	public Matrix<T> Clone() {
+    public Matrix<T> Clone() // TEST
+    {
         Matrix<T> aux = new Matrix<T>(Width, Height);
         aux.Capacity = Capacity;
         aux._data = _data;
-        //IMPLEMENTAR
+
         return aux;
     }
 
-	public void SetRangeTo(int x0, int y0, int x1, int y1, T item) {
-        //IMPLEMENTAR: iguala todo el rango pasado por parámetro a item
+    public void SetRangeTo(int x0, int y0, int x1, int y1, T item) // TEST: Iguala todo el rango pasado por parámetro a item
+    {
         for (int i = x0; i < x1; i++)
         {
-            for (int z = y0; z < y1; z++) {
+            for (int z = y0; z < y1; z++)
+            {
 
                 _data[i * z + z] = item;
             }
         }
     }
 
-    //Todos los parametros son INCLUYENTES
-    public List<T> GetRange(int x0, int y0, int x1, int y1) {
+    public List<T> GetRange(int x0, int y0, int x1, int y1)  // TEST: Todos los parametros son INCLUYENTES
+    {
         List<T> l = new List<T>();
-        //IMPLEMENTAR
-        for (int i = x0; i < x1; i++)
+
+        for (int i = x0; i <= x1; i++)
         {
-            for (int z = y0; z < y1; z++)
+            for (int z = y0; z <= y1; z++)
             {
 
                 l.Add(_data[i * z + z]);
             }
         }
+
         return l;
-	}
+    }
 
-    //Para poder igualar valores en la matrix a algo
-    public T this[int x, int y] {
-		get
-        {
-            //IMPLEMENTAR
-            return _data[x + (y * Height)];
-            //return default(T);
-		}
-		set {
-            //IMPLEMENTAR
-            _data[x + (y * Height)] = value;
-        }
-	}
-
-    public int Width { get; private set; }
-
-    public int Height { get; private set; }
-
-    public int Capacity { get; private set; }
-
-    public IEnumerator<T> GetEnumerator()
+    public T this[int x, int y]  // DONE: Para poder igualar valores en la matrix a algo
     {
-        //IMPLEMENTAR
+        get
+        {
+            return _data[x + (y * Width)];
+        }
+        set
+        {
+            _data[x + (y * Width)] = value;
+        }
+    }
+
+    public int Width { get; private set; } // DONE
+    public int Height { get; private set; } // DONE
+    public int Capacity { get; private set; } // DONE
+
+    public IEnumerator<T> GetEnumerator() // TEST
+    {
         var current = _data[1];
         int a = 1;
         while (a > _data.Length)
@@ -100,8 +94,8 @@ public class Matrix<T> : IEnumerable<T>
         }
         yield return current;
     }
-
-	IEnumerator IEnumerable.GetEnumerator() {
-		return GetEnumerator();
-	}
+    IEnumerator IEnumerable.GetEnumerator() // DONE
+    {
+        return GetEnumerator();
+    }
 }
