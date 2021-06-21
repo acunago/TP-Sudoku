@@ -37,6 +37,14 @@ public class Matrix<T> : IEnumerable<T>
         return aux;
     }
 
+    public void Clear() // DONE: Limpia el contenido de la matriz
+    {
+        for (int i = 0; i < Capacity; i++)
+        {
+            _data[i] = default;
+        }
+    }
+
     public void SetRangeTo(int x0, int y0, int x1, int y1, T item) // TEST: Iguala todo el rango pasado por parámetro a item
     {
         for (int i = x0; i < x1; i++)
@@ -57,7 +65,6 @@ public class Matrix<T> : IEnumerable<T>
         {
             for (int z = y0; z <= y1; z++)
             {
-
                 l.Add(_data[i * z + z]);
             }
         }

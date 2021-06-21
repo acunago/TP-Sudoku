@@ -10,6 +10,7 @@ public class Cell : MonoBehaviour
     private int _number;
     private bool _locked;
     private bool _invalid;
+    private bool _focus;
     private Image _image;
 
     private void Awake()
@@ -64,11 +65,25 @@ public class Cell : MonoBehaviour
             RefreshColor();
         }
     }
+    public bool focused
+    {
+        get
+        {
+            return _focus;
+        }
+        set
+        {
+            _focus = value;
+            RefreshColor();
+        }
+    }
 
     private void RefreshColor()
     {
         if (_invalid)
             _image.color = Color.red;
+        else if (_focus)
+            _image.color = Color.yellow;
         else if (_locked)
             _image.color = new Color(0.75f, 0.75f, 0.75f);
         else

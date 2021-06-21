@@ -4,35 +4,34 @@ using System.Collections.Generic;
 using UnityEngine.UI;
 using Random = UnityEngine.Random;
 
-
 public class Sudoku : MonoBehaviour
 {
     /* REFERENCES & SETTING */
     public Cell prefabCell;
     public Canvas canvas;
     public Text feedback;                           // Comunicacion con el usuario
-    public float stepDuration = 0.05f;
-    [Range(0, 1)] public float difficulty = 0.5f;
+    public bool rawStep = false;                    // Define si muestra todos los pasos o solo los correctos
+    public float stepDuration = 0.05f;              // Velocidad de los pasos que muestra
+    [Range(0, 1)] public float difficulty = 0.5f;   // Define la dificultad en base a la cantidad total de celdas
+    public int side = 3;                            // Guarda el tamaño del recuadro a controlar
 
     /* PRIVATE VARIABLES */
     private Matrix<Cell> _board;                    // Matriz de celdas a usar como tablero
     private Matrix<int> _mtx;                       // Matriz de numeros del board
     private int _boardSide;                         // Guarda la cantidad de casillas por lado del board
-    private int _side;                              // Guarda 3 (tamaño del recuadro a controlar)
-    private int _quad;                              // Guarda 3 (cantidad de recuadros a controlar)
     private string _memory = "";                    // Guarda el el debugueo de la memoria
     private List<int[]> _path;                      // Guarda el camino de resolucion a reproducir
-
+    private bool _input;                            // Bloquea el input mientras resuelve
+    private int _total;                             // cantidad total de numeros probados
 
     private void Start()
     {
         DebugMemory();
 
-        _side = 3;// VER
-        _quad = 3;// VER
-        _boardSide = _side * _quad;
+        _boardSide = side * side;
 
         _path = new List<int[]>();
+        _input = true;
 
         CreateEmptyBoard();
         ClearBoard();
@@ -41,11 +40,11 @@ public class Sudoku : MonoBehaviour
     private void DebugMemory(string msg = "") // DONE: Comunica el uso de memoria y algun mensaje extra
     {
         long mem = System.GC.GetTotalMemory(true);
-        _memory = string.Format("MEM: {0:f2}MB", mem / (1024f * 1024f));
+        _memory = string.Format("MEM: {0:f2}MB - ", mem / (1024f * 1024f));
 
         feedback.text = _memory + msg;
     }
-    private void CreateEmptyBoard() // DONE
+    private void CreateEmptyBoard() // DONE: Crea el tablero
     {
         float spacing = 68f;
         float startX = -spacing * 4f;
@@ -62,19 +61,33 @@ public class Sudoku : MonoBehaviour
             }
         }
     }
-    private void ClearBoard() // DONE
+    private void ClearBoard() // FIX: Pone el tablero en cero y desbloquea las celdas
     {
         _mtx = new Matrix<int>(_boardSide, _boardSide);
 
-        foreach (var cell in _board)
+        for (int y = 0; y < _boardSide; y++)
         {
-            cell.number = 0;
-            cell.locked = cell.invalid = false;
+            for (int x = 0; x < _boardSide; x++)
+            {
+                _board[x, y].number = Cell.EMPTY;
+                _board[x, y].locked = false;
+                _board[x, y].focused = false;
+            }
         }
+
+        // NO ANDA EL FOREACH
+        //foreach (var cell in _board)
+        //{
+        //    Debug.Log("entre");
+        //    cell.number = Cell.EMPTY;
+        //    cell.focused = cell.locked = cell.invalid = false;
+        //}
     }
 
     private void Update()
     {
+        if (!_input) return;
+
         if (Input.GetKeyDown(KeyCode.R) || Input.GetMouseButtonDown(1))
             SolvedSudoku();
         else if (Input.GetKeyDown(KeyCode.C) || Input.GetMouseButtonDown(0))
@@ -85,9 +98,17 @@ public class Sudoku : MonoBehaviour
     private void SolvedSudoku() // DONE: Resuelve el sudoku
     {
         StopAllCoroutines();
+        _path.Clear();
+        _input = false;
+        _total = 0;
+        DebugMemory("Resolving...");
 
         if (RecuSolve(0, 0)) StartCoroutine("ShowPath");
-        else DebugMemory("Recusolving Failed");
+        else
+        {
+            DebugMemory("Recusolving Failed");
+            _input = true;
+        }
     }
     private bool RecuSolve(int x, int y) // DONE: Resuelve con recursion y backtracking
     {
@@ -104,16 +125,19 @@ public class Sudoku : MonoBehaviour
         {
             for (int i = 1; i <= _boardSide; i++)
             {
+                _total++;
                 if (CanPlaceValue(i, x, y))
                 {
                     _mtx[x, y] = i;
-                    _path.Add(new int[] { x, y, i });
+                    var step = new int[] { x, y, i };
+                    _path.Add(step);
 
                     if (RecuSolve(nx, ny))
                         return true;
                     else
                     {
-                        _path.RemoveAt(_path.Count - 1);
+                        if (rawStep) _path.Add(new int[] { x, y, 0 });
+                        else _path.Remove(step);
                         _mtx[x, y] = 0;
                     }
                 }
@@ -142,15 +166,15 @@ public class Sudoku : MonoBehaviour
         }
 
         // REVISO EL CUADRANTE
-        int auxX = (int)(x / _side);                        // Mi X inicio de cuadrante
-        int auxY = (int)(y / _side);                        // Mi Y inicio de cuadrante
-        for (int i = 0; i < _side; i++)
+        int auxX = (int)(x / side);                        // Mi X inicio de cuadrante
+        int auxY = (int)(y / side);                        // Mi Y inicio de cuadrante
+        for (int i = 0; i < side; i++)
         {
-            var u = i + auxX * _side;
+            var u = i + auxX * side;
             if (u == x) continue;                           // Si es mi columna me salto
-            for (int j = 0; j < _side; j++)
+            for (int j = 0; j < side; j++)
             {
-                var v = j + auxY * _side;
+                var v = j + auxY * side;
                 if (v == y) continue;                       // Si es mi fila me salto
                 if (_mtx[u, v] == value) return false;      // Si uno es igual corto la validaciones
             }
@@ -158,26 +182,36 @@ public class Sudoku : MonoBehaviour
 
         return true;
     }
-    private IEnumerator ShowPath() // TEST: Carga paso a paso el camino de resolucion
+    private IEnumerator ShowPath() // DONE: Carga paso a paso el camino de resolucion
     {
         for (int i = 0; i < _path.Count; i++)
         {
-            _board[_path[i][0], _path[i][1]].number = _path[i][2];
+            int x = _path[i][0];
+            int y = _path[i][1];
+            _board[x, y].focused = true;
+            _board[x, y].number = _path[i][2];
             yield return new WaitForSeconds(stepDuration);
+            _board[x, y].focused = false;
         }
 
-        DebugMemory("Sudoku Solved");
+        DebugMemory("Solved in " + _total + " steps");
+        _input = true;
     }
 
-    private void CreateSudoku() // TEST: Crea un nuevo sudoku
+    private void CreateSudoku() // DONE: Crea un nuevo sudoku
     {
         StopAllCoroutines();
         ClearBoard();
+        _path.Clear();
+        _input = false;
+        _total = 0;
+        DebugMemory("Creating...");
 
         // Genero primera linea
         List<int> nums = FillRamdoms();
         for (int i = 0; i < _boardSide; i++)
         {
+            _total++;
             _mtx[i, 0] = nums[i];
         }
 
@@ -188,32 +222,30 @@ public class Sudoku : MonoBehaviour
         {
             for (int i = 0; i < nums.Count; i++)
             {
-                if (j < _quad && !CanPlaceValue(0, j, nums[i]))
+                _total++;
+                if (j < side && !CanPlaceValue(nums[i], 0, j))
                     continue;
                 _mtx[0, j] = nums[i];
                 nums.RemoveAt(i);
+                break;
             }
         }
 
         // Completo el resto de las celdas
         if (RecuSolve(1, 1)) DebugMemory();
-        else DebugMemory("Creation Failed");
+        else
+        {
+            DebugMemory("Creation Failed");
+            _input = true;
+            return;
+        }
 
         SetDifficulty();
         LoadBoardFromMtx();
-
-
-        //LockRandomCells();
-        //ClearUnlocked(_mtx);
-
-
-        DebugMemory(); // VER el feedback
-
-        //canSolve = result ? " VALID" : " INVALID";
-
-        //feedback.text = "Pasos: " + l.Count + "/" + l.Count + " - " + _memory + " - " + canSolve;
+        DebugMemory("Created in " + _total + " steps");
+        _input = true;
     }
-    private List<int> FillRamdoms() // TEST: Devuelve una lista con los numeros desordenados
+    private List<int> FillRamdoms() // DONE: Devuelve una lista con los numeros desordenados
     {
         List<int> bag = new List<int>();
 
@@ -233,7 +265,7 @@ public class Sudoku : MonoBehaviour
             }
         }
     }
-    private void SetDifficulty() // TEST: Inicia el tablero en la dificultad seleccionada
+    private void SetDifficulty() // DONE: Inicia el tablero en la dificultad seleccionada
     {
         List<int[]> posibles = new List<int[]>();
 
@@ -250,7 +282,7 @@ public class Sudoku : MonoBehaviour
             posibles.RemoveAt(rdm);
         }
 
-        // Limpia los casilleros y guarda el path
+        // Limpia los casilleros y guarda el path por si quiero mostrar la resolucion original
         _path.Clear();
         for (int i = 0; i < posibles.Count; i++)
         {
@@ -260,10 +292,18 @@ public class Sudoku : MonoBehaviour
             _mtx[x, y] = Cell.EMPTY;
         }
     }
-    
+
     private void LoadFromValidTest(int i) // DONE: Carga el tablero indicado
     {
+        StopAllCoroutines();
+        ClearBoard();
+
         _mtx = new Matrix<int>(Tests.validBoards[i]);
         LoadBoardFromMtx();
+    }
+
+    private void CheckValidity(int x, int y) //DONE: Revisa validez de una celda
+    {
+        _board[x, y].invalid = !CanPlaceValue(_board[x, y].number, x, y);
     }
 }
