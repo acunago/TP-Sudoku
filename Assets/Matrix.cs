@@ -90,9 +90,9 @@ public class Matrix<T> : IEnumerable<T>
 
     public IEnumerator<T> GetEnumerator() // TEST
     {
-        var current = _data[1];
-        int a = 1;
-        while (a > _data.Length)
+        var current = _data[0];
+        int a = 0;
+        while (a < _data.Length - 1)
         {
             a++;
             yield return current;

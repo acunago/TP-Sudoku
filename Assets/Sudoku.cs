@@ -65,23 +65,23 @@ public class Sudoku : MonoBehaviour
     {
         _mtx = new Matrix<int>(_boardSide, _boardSide);
 
-        for (int y = 0; y < _boardSide; y++)
-        {
-            for (int x = 0; x < _boardSide; x++)
-            {
-                _board[x, y].number = Cell.EMPTY;
-                _board[x, y].locked = false;
-                _board[x, y].focused = false;
-            }
-        }
+        //for (int y = 0; y < _boardSide; y++)
+        //{
+        //    for (int x = 0; x < _boardSide; x++)
+        //    {
+        //        _board[x, y].number = Cell.EMPTY;
+        //        _board[x, y].locked = false;
+        //        _board[x, y].focused = false;
+        //    }
+        //}
 
         // NO ANDA EL FOREACH
-        //foreach (var cell in _board)
-        //{
-        //    Debug.Log("entre");
-        //    cell.number = Cell.EMPTY;
-        //    cell.focused = cell.locked = cell.invalid = false;
-        //}
+        foreach (var cell in _board)
+        {
+            Debug.Log("entre");
+            cell.number = Cell.EMPTY;
+            cell.focused = cell.locked = cell.invalid = false;
+        }
     }
 
     private void Update()
